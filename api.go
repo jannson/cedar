@@ -240,6 +240,28 @@ func (da *Cedar) PrefixPredict(key []byte, num int) (ids []int) {
 	return
 }
 
+// like PrefixPredict version with channel supported, not lock protect here
+func (da *Cedar) PrefixPredictChannel(key []byte, num, channelSize int) chan int {
+	ret := make(chan int, channelSize)
+	go func() {
+		defer close(ret)
+		root, err := da.Jump(key, 0)
+		if err != nil {
+			return
+		}
+
+		for from, err := da.begin(root); err == nil; from, err = da.next(from, root) {
+			ret <- from
+			num--
+			if num == 0 {
+				return
+			}
+		}
+	}()
+
+	return ret
+}
+
 func (da *Cedar) begin(from int) (to int, err error) {
 	for c := da.Ninfos[from].Child; c != 0; {
 		to = da.Array[from].base() ^ int(c)
