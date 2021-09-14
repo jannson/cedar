@@ -283,7 +283,7 @@ func (da *Cedar) next(from int, root int) (to int, err error) {
 		c = da.Ninfos[from].Sibling
 	}
 
-	if from == root {
+	if from == root || da.Array[from].Check < 0 {
 		return 0, ErrNoPath
 	}
 	from = da.Array[da.Array[from].Check].base() ^ int(c)
