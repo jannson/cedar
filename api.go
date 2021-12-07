@@ -38,6 +38,7 @@ func (da *Cedar) Jump(path []byte, from int) (to int, err error) {
 		}
 
 		to = da.Array[from].base() ^ int(b)
+		//log.Println("jump to=", to, "from=", from, "check=", da.Array[to].Check)
 		if da.Array[to].Check != from {
 			return from, ErrNoPath
 		}
@@ -136,6 +137,7 @@ func (da *Cedar) Delete(key []byte) error {
 	if da.Array[to].Value < 0 {
 		base := da.Array[to].base()
 		if da.Array[base].Check == to {
+			//log.Println("to==check, base=", base, "to=", to)
 			to = base
 		}
 	}
@@ -144,6 +146,8 @@ func (da *Cedar) Delete(key []byte) error {
 		from := da.Array[to].Check
 		base := da.Array[from].base()
 		label := byte(to ^ base)
+		//log.Println("Delete to=", to, "from=", from, "label=", label)
+		//log.Println("Delete sibling=", da.Ninfos[to].Sibling, "child=", da.Ninfos[from].Child)
 
 		// if `to` has sibling, remove `to` from the sibling list, then stop
 		if da.Ninfos[to].Sibling != 0 || da.Ninfos[from].Child != label {
@@ -158,6 +162,13 @@ func (da *Cedar) Delete(key []byte) error {
 		da.pushEnode(to)
 		// then check its parent node
 		to = from
+
+		if to == 0 {
+			// the only one node deleted from root, reset child to 0
+			da.Ninfos[to].Child = 0
+		}
+
+		//log.Println("Delete sibling2 to=", to, "sibling=", da.Ninfos[to].Sibling, "child=", da.Ninfos[to].Child)
 	}
 
 	return nil
@@ -229,7 +240,13 @@ func (da *Cedar) PrefixPredict(key []byte, num int) (ids []int) {
 		return
 	}
 
-	for from, err := da.begin(root); err == nil; from, err = da.next(from, root) {
+	from0, err := da.begin(root)
+	if err != nil {
+		return
+	}
+	//log.Println("root=", root, "from0=", from0)
+
+	for from := from0; err == nil; from, err = da.next(from, root, from0) {
 		ids = append(ids, from)
 		num--
 		if num == 0 {
@@ -250,7 +267,12 @@ func (da *Cedar) PrefixPredictChannel(key []byte, num, channelSize int) chan int
 			return
 		}
 
-		for from, err := da.begin(root); err == nil; from, err = da.next(from, root) {
+		from0, err := da.begin(root)
+		if err != nil {
+			return
+		}
+
+		for from := from0; err == nil; from, err = da.next(from, root, from0) {
 			ret <- from
 			num--
 			if num == 0 {
@@ -262,11 +284,20 @@ func (da *Cedar) PrefixPredictChannel(key []byte, num, channelSize int) chan int
 	return ret
 }
 
+//var globalCount int
+
 func (da *Cedar) begin(from int) (to int, err error) {
+	//log.Println("begin in from=", from)
+	// deth first search
 	for c := da.Ninfos[from].Child; c != 0; {
 		to = da.Array[from].base() ^ int(c)
 		c = da.Ninfos[to].Child
+		//log.Println("down to=", to, "c=", byte(c))
 		from = to
+		//globalCount++
+		//if globalCount > 20 {
+		//	log.Fatal("Error globalCount")
+		//}
 	}
 
 	if da.Array[from].base() > 0 {
@@ -276,17 +307,30 @@ func (da *Cedar) begin(from int) (to int, err error) {
 	return from, nil
 }
 
-func (da *Cedar) next(from int, root int) (to int, err error) {
+func (da *Cedar) next(from, root, from0 int) (to int, err error) {
+	//log.Println("next in from=", from, "root=", root)
 	c := da.Ninfos[from].Sibling
 	for c == 0 && from != root && da.Array[from].Check >= 0 {
+		// find sibling that has childs
+		//log.Println("upper from=", from, "check=", da.Array[from].Check, "c=", byte(da.Ninfos[da.Array[from].Check].Sibling))
 		from = da.Array[from].Check
 		c = da.Ninfos[from].Sibling
 	}
+	//log.Println("next c=", c, "from=", from, "root=", root, "da.Array[from].Check=", da.Array[from].Check)
 
 	if from == root || da.Array[from].Check < 0 {
 		return 0, ErrNoPath
 	}
+	//oldFrom := from
 	from = da.Array[da.Array[from].Check].base() ^ int(c)
+
+	// da.Ninfos[from].Child ^ da.Array[from].base() == from
+	//log.Println("before begin oldFrom=", oldFrom, "from=", from, "to=", int(da.Ninfos[from].Child)^da.Array[from].base(), "from.Check=", da.Array[from].Check)
+
+	if from == from0 {
+		// loop again
+		return 0, ErrNoPath
+	}
 
 	return da.begin(from)
 }

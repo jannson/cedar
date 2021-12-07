@@ -203,6 +203,7 @@ func (da *Cedar) popEnode(base, from int, label byte) int {
 	} else {
 		da.Array[-n.Value].Check = n.Check
 		da.Array[-n.Check].Value = n.Value
+		//log.Printf("popEnode da.Array[%d].Check=%d e=%d\n", -n.Value, n.Check, e)
 
 		if e == b.Ehead {
 			b.Ehead = -n.Check
@@ -215,6 +216,7 @@ func (da *Cedar) popEnode(base, from int, label byte) int {
 
 	n.Value = ValueLimit
 	n.Check = from
+	//log.Println("popEncode e=", e, "n.Check=", n.Check)
 	if base < 0 {
 		da.Array[from].Value = -(e ^ int(label)) - 1
 	}
@@ -240,6 +242,8 @@ func (da *Cedar) pushEnode(e int) {
 		da.Array[prev].Check = -e
 		da.Array[next].Value = -e
 
+		//log.Printf("pushEnode da.Array[%d].Check=%d\n", e, da.Array[e].Check)
+
 		if b.Num == 2 || b.Trial == da.MaxTrial {
 			if bi != 0 {
 				da.transferBlock(bi, &da.BheadC, &da.BheadO)
@@ -253,6 +257,7 @@ func (da *Cedar) pushEnode(e int) {
 		b.Reject = da.Reject[b.Num]
 	}
 	da.Ninfos[e] = ninfo{}
+	//log.Printf("pushEnode da.Ninfos[%d]=ninfo{} sibling=%d", e, da.Ninfos[e].Sibling)
 }
 
 // hasChild: wherether the `from` node has children
@@ -271,7 +276,9 @@ func (da *Cedar) pushSibling(from, base int, label byte, hasChild bool) {
 	}
 
 	da.Ninfos[base^int(label)].Sibling = *c
+	//oldC := *c
 	*c = label
+	//log.Printf("pushSibling da.Ninfos[%d].Sibling=%d, da.Ninfos[%d].Child=%d, oldC=%d, hasChild=%v\n", base^int(label), da.Ninfos[base^int(label)].Sibling, from, da.Ninfos[from].Child, oldC, hasChild)
 }
 
 func (da *Cedar) popSibling(from, base int, label byte) {

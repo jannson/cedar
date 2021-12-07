@@ -196,3 +196,92 @@ func TestPrefixPredict(t *testing.T) {
 	values = []int{15, 17, 18}
 	check(cd, ids, keys, values)
 }
+
+func TestCedarInnerDelete1(t *testing.T) {
+	signalPaths := New()
+
+	prefix := ""
+	p2 := "/tmp/testDir/c1/c2/"
+	signalPaths.Insert([]byte(p2), 1)
+	for _, id := range signalPaths.PrefixPredict([]byte([]byte(prefix)), 0) {
+		log.Println("id=", id)
+		key, err := signalPaths.Key(id)
+		if err != nil {
+			log.Println("key error", err)
+			break
+		}
+		fmt.Println("signalPath key5", string(key))
+	}
+}
+
+func TestCedarInnerDelete2(t *testing.T) {
+	signalPaths := New()
+
+	prefix := ""
+	p3 := "/tmp/"
+	signalPaths.Insert([]byte(p3), 1)
+	log.Println("sibling461=", signalPaths.Ninfos[46].Sibling)
+
+	signalPaths.Delete([]byte(p3))
+	log.Println("sibling462=", signalPaths.Ninfos[46].Sibling)
+
+	p2 := "/tmp/testDir/c1/c2/"
+	signalPaths.Insert([]byte(p2), 1)
+
+	log.Println("sibling463=", signalPaths.Ninfos[46].Sibling)
+
+	for _, id := range signalPaths.PrefixPredict([]byte([]byte(prefix)), 0) {
+		log.Println("id=", id)
+		key, err := signalPaths.Key(id)
+		if err != nil {
+			log.Println("key error", err)
+			break
+		}
+		fmt.Println("signalPath key5", string(key))
+	}
+}
+
+func TestCedarInnerDelete3(t *testing.T) {
+	signalPaths := New()
+
+	prefix := ""
+	p3 := "/tmp/"
+	signalPaths.Insert([]byte(p3), 1)
+	signalPaths.Delete([]byte(p3))
+
+	p2 := "/tmp/testDir/c1/c2/"
+	signalPaths.Insert([]byte(p2), 1)
+
+	p1 := "/t2/"
+	signalPaths.Insert([]byte(p1), 1)
+
+	signalPaths.Delete([]byte(p2))
+	signalPaths.Delete([]byte(p1))
+
+	signalPaths.Insert([]byte(p1), 1)
+	signalPaths.Insert([]byte(p2), 1)
+	signalPaths.Insert([]byte("tmp"), 1)
+
+	for _, id := range signalPaths.PrefixPredict([]byte([]byte(prefix)), 0) {
+		log.Println("id=", id)
+		key, err := signalPaths.Key(id)
+		if err != nil {
+			log.Println("key error", err)
+			break
+		}
+		log.Println("signalPath key5", string(key))
+	}
+
+	signalPaths.Delete([]byte(p2))
+	signalPaths.Delete([]byte(p1))
+
+	for _, id := range signalPaths.PrefixPredict([]byte([]byte(prefix)), 0) {
+		log.Println("id=", id)
+		key, err := signalPaths.Key(id)
+		if err != nil {
+			log.Println("key error", err)
+			break
+		}
+		log.Println("signalPath key5", string(key))
+	}
+}
