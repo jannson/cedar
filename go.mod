@@ -1,4 +1,4 @@
-module github.com/go-ego/cedar
+module github.com/jannson/cedar
 
 go 1.13
 
